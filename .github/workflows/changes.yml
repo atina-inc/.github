@@ -1,0 +1,40 @@
+# Reusable change detection (atina-inc Actions guide).
+# Caller passes dorny/paths-filter filters; outputs a JSON map of filter -> 'true'/'false'.
+# Usage:
+#   jobs:
+#     changes:
+#       uses: atina-inc/.github/.github/workflows/changes.yml@main
+#       with:
+#         filters: |
+#           api: ['api/**', '.github/**']
+#   then: if: fromJSON(needs.changes.outputs.changes).api == 'true'  (or contains(fromJSON(needs.changes.outputs.list), 'api'))
+name: Detect changes
+on:
+  workflow_call:
+    inputs:
+      filters:
+        description: paths-filter YAML. Shared paths (.github/, deploy/, infra/, lockfile) should be in every filter.
+        required: true
+        type: string
+      timeout-minutes:
+        type: number
+        default: 3
+    outputs:
+      list:
+        description: JSON array of filters that matched
+        value: ${{ jobs.changes.outputs.list }}
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    outputs:
+      list: ${{ steps.f.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: f
+        with:
+          filters: ${{ inputs.filters }}
